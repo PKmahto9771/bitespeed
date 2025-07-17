@@ -9,9 +9,6 @@ build/
 prisma/generated/
 .prisma/
 
-# Prisma migrations (optional, if you recreate migrations)
-prisma/migrations/
-
 # Environment variables
 .env
 .env.*.local
