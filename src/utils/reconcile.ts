@@ -34,28 +34,36 @@ export const reconcileContact = async (
         };
     }
 
-    // Step 1: Get all contacts marked as 'primary'
-    const primaryContacts: Contact[] = contacts.filter(c => c.linkPrecedence === 'primary');
-    if (primaryContacts.length === 0 && contacts.length > 0) {
-        // If no primary contacts, check for linked contacts
-        const linkedContacts = await prisma.contact.findMany({
-            where: {
-                id: contacts[0].linkedId ?? undefined,
-                linkPrecedence: 'primary',
-            },
-        });
-        primaryContacts.push(...linkedContacts);
-    }
+    // Get complete contact chain in single query
+    const linkedIds = contacts.map(c => c.linkedId).filter(Boolean) as number[];
+    const primaryIds = contacts.filter(c => c.linkPrecedence === 'primary').map(c => c.id);
     
-    // Step 2: Choose the one with the lowest ID
-    const truePrimaryContact = primaryContacts.reduce((min, c) => (c.id < min.id ? c : min));
+    const allRelatedContacts = await prisma.contact.findMany({
+        where: {
+            AND: [
+                {
+                    OR: [
+                        { id: { in: contacts.map(c => c.id) } },
+                        { id: { in: linkedIds } },
+                        { linkedId: { in: primaryIds } },
+                    ],
+                },
+                { deletedAt: null },
+            ],
+        },
+        orderBy: { createdAt: 'asc' }
+    });
 
-    // Step 3: Prepare update list (convert other primaries to secondary)
+    // Process all contacts in memory 
+    const allPrimaryContacts = allRelatedContacts.filter(c => c.linkPrecedence === 'primary');
+    const truePrimaryContact = allPrimaryContacts.reduce((min, c) => (c.id < min.id ? c : min));
+
+    // Prepare update list (convert other primaries to secondary)
     const contactToUpdate = contacts.filter(
     c => c.id !== truePrimaryContact.id && c.linkPrecedence === 'primary'
     );
 
-    // Step 4: Batch Update in DB (convert to secondary and set linkedId)
+    // Batch Update in DB (convert to secondary and set linkedId)
     if (contactToUpdate.length > 0) {
         await prisma.contact.updateMany({
             where: {
@@ -71,12 +79,9 @@ export const reconcileContact = async (
     const emails = new Set<string>();
     const phoneNumbers = new Set<string>();
 
-    const secondaryContacts: Contact[] = await prisma.contact.findMany({
-        where: {
-            linkedId: truePrimaryContact.id,
-            linkPrecedence: 'secondary',
-        },
-    });
+    const secondaryContacts = allRelatedContacts.filter(
+        c => c.id !== truePrimaryContact.id
+    );
 
     emails.add(truePrimaryContact.email!);
     phoneNumbers.add(truePrimaryContact.phoneNumber!);
