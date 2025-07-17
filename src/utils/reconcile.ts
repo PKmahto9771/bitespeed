@@ -47,7 +47,8 @@ export const reconcileContact = async (
 
     // Get complete contact chain in single query
     const linkedIds = contacts.map(c => c.linkedId).filter(Boolean) as number[];
-    const primaryIds = contacts.filter(c => c.linkPrecedence === 'primary').map(c => c.id);        const allRelatedContacts = await tx.contact.findMany({
+    const primaryIds = contacts.filter(c => c.linkPrecedence === 'primary').map(c => c.id);        
+    const allRelatedContacts = await tx.contact.findMany({
         where: {
             AND: [
                 {
@@ -70,8 +71,9 @@ export const reconcileContact = async (
     // Prepare update list (convert other primaries to secondary) - use all related contacts
     const contactToUpdate = allPrimaryContacts.filter(
         c => c.id !== truePrimaryContact.id
-    );        
-    // Batch Update in DB (convert to secondary and set linkedId)
+    );      
+
+    // Batch Update in DB (convert primary to secondary and set linkedId)
     if (contactToUpdate.length > 0) {
         await tx.contact.updateMany({
             where: {
@@ -128,7 +130,8 @@ export const reconcileContact = async (
         
     const finalPhoneNumbers = truePrimaryContact.phoneNumber
         ? [truePrimaryContact.phoneNumber, ...responsePhoneNumbers.filter(p => p !== truePrimaryContact.phoneNumber)]
-        : responsePhoneNumbers;        return {
+        : responsePhoneNumbers;        
+        return {
             primaryContactId: truePrimaryContact.id,
             emails: finalEmails,
             phoneNumbers: finalPhoneNumbers,
