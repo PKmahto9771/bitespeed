@@ -55,13 +55,15 @@ export const reconcileContact = async (
     c => c.id !== truePrimaryContact.id && c.linkPrecedence === 'primary'
     );
 
-    // Step 4: Update in DB (convert to secondary and set linkedId)
-    for (const contact of contactToUpdate) {
-        await prisma.contact.update({
-            where: { id: contact.id },
+    // Step 4: Batch Update in DB (convert to secondary and set linkedId)
+    if (contactToUpdate.length > 0) {
+        await prisma.contact.updateMany({
+            where: {
+                id: { in: contactToUpdate.map(c => c.id) },
+            },
             data: {
-            linkPrecedence: 'secondary',
-            linkedId: truePrimaryContact.id,
+                linkPrecedence: 'secondary',
+                linkedId: truePrimaryContact.id,
             },
         });
     }
