@@ -1,0 +1,39 @@
+# Node modules
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Prisma generated client
+prisma/generated/
+.prisma/
+
+# Prisma migrations (optional, if you recreate migrations)
+prisma/migrations/
+
+# Environment variables
+.env
+.env.*.local
+.env.local
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# TypeScript
+*.tsbuildinfo
+
+# Coverage
+coverage/
